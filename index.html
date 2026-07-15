@@ -3,126 +3,286 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NFC Google Review Writer</title>
+    <title>NFC Review Tag Configurator</title>
     <style>
-        body { 
-            font-family: sans-serif; 
-            text-align: center; 
-            background: #f3f4f6; 
-            padding: 20px; 
-            margin-top: 50px;
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --bg: #f9fafb;
+            --card-bg: #ffffff;
+            --text-main: #111827;
+            --text-muted: #4b5563;
+            --border: #e5e7eb;
         }
-        .card { 
-            background: white; 
-            padding: 30px; 
-            border-radius: 12px; 
-            max-width: 380px; 
-            margin: 0 auto; 
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
         }
-        input { 
-            width: 100%; 
-            padding: 12px; 
-            margin: 15px 0; 
-            border: 1px solid #ccc; 
-            border-radius: 6px; 
-            box-sizing: border-box; 
+
+        .card {
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+            max-width: 440px;
+            width: 100%;
+            text-align: center;
+            border: 1px solid var(--border);
         }
-        button { 
-            background: #4f46e5; 
-            color: white; 
-            border: none; 
-            padding: 14px; 
-            width: 100%; 
-            border-radius: 6px; 
-            font-weight: bold; 
-            cursor: pointer; 
+
+        .icon {
+            font-size: 50px;
+            margin-bottom: 15px;
         }
-        button:disabled { 
-            background: #ccc; 
+
+        h1 {
+            font-size: 24px;
+            margin: 0 0 8px 0;
+            color: var(--text-main);
         }
-        #status { 
-            margin-top: 15px; 
-            font-weight: bold; 
-            font-size: 14px; 
-            color: #374151; 
+
+        p {
+            color: var(--text-muted);
+            font-size: 14px;
+            line-height: 1.5;
+            margin: 0 0 24px 0;
+        }
+
+        .input-group {
+            text-align: left;
+            margin-bottom: 20px;
+        }
+
+        label {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            display: block;
+            margin-bottom: 8px;
+            letter-spacing: 0.5px;
+        }
+
+        input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            font-size: 15px;
+            box-sizing: border-box;
+            transition: all 0.2s;
+        }
+
+        input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
+            outline: none;
+        }
+
+        .steps {
+            background: #f3f4f6;
+            padding: 12px;
+            border-radius: 10px;
+            text-align: left;
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 20px;
+        }
+
+        .steps ol {
+            margin: 0;
+            padding-left: 20px;
+        }
+
+        .steps li {
+            margin-bottom: 4px;
+        }
+
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 16px 20px;
+            width: 100%;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+
+        button:disabled {
+            background-color: #e5e7eb;
+            color: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        #status {
+            margin-top: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            padding: 12px;
+            border-radius: 10px;
+            display: none;
             line-height: 1.4;
         }
+
+        .status-loading { display: block !important; background: #eff6ff; color: #1e40af; }
+        .status-success { display: block !important; background: #ecfdf5; color: #065f46; }
+        .status-error { display: block !important; background: #fef2f2; color: #991b1b; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h2>NFC Link Maker 🪄</h2>
-    <p>Paste your full Google Maps browser link below:</p>
+    <div class="icon">🪄</div>
+    <h1>NFC Review Linker</h1>
+    <p>Program your NFC review card instantly for free without any Google account setup.</p>
     
-    <input type="text" id="mapsUrl" placeholder="Paste link here..." autocomplete="off">
-    <button id="btn" onclick="process()">1. Process Link</button>
+    <div class="steps">
+        <label>How to get your link:</label>
+        <ol>
+            <li>Open Google Maps and search for your business.</li>
+            <li>Tap <strong>Share</strong> and select <strong>Copy Link</strong>.</li>
+            <li>Paste the copied link in the input box below.</li>
+        </ol>
+    </div>
+
+    <div class="input-group">
+        <label for="mapsUrl">Paste Google Maps Link</label>
+        <input type="text" id="mapsUrl" placeholder="https://maps.app.goo.gl/..." autocomplete="off">
+    </div>
+    
+    <button id="processBtn">Set Up Tag Link</button>
     <div id="status"></div>
 </div>
 
 <script>
-    let reviewUrl = "";
+    const mapsUrlInput = document.getElementById('mapsUrl');
+    const processBtn = document.getElementById('processBtn');
+    const statusDiv = document.getElementById('status');
+    
+    let targetReviewUrl = '';
+    let stepState = 'parse'; // 'parse' or 'write'
 
-    function process() {
-        let input = document.getElementById('mapsUrl').value.trim();
-        let status = document.getElementById('status');
-        let btn = document.getElementById('btn');
+    // Main button action controller
+    processBtn.addEventListener('click', async () => {
+        if (stepState === 'parse') {
+            await handleUrlParsing();
+        } else if (stepState === 'write') {
+            await handleNfcWriting();
+        }
+    });
 
-        if (!input) {
-            status.innerHTML = "❌ Please paste a link first.";
+    // Reset interface state if user edits the input URL
+    mapsUrlInput.addEventListener('input', () => {
+        stepState = 'parse';
+        processBtn.innerText = "Set Up Tag Link";
+        processBtn.style.backgroundColor = '';
+        statusDiv.style.display = 'none';
+    });
+
+    // Step 1: Parse the pasted URL and extract the Place ID/CID
+    async function handleUrlParsing() {
+        const rawUrl = mapsUrlInput.value.trim();
+        if (!rawUrl) {
+            showStatus("Please paste a valid Google Maps link first.", "error");
             return;
         }
 
-        // Catch mobile short links and direct the user
-        if (input.includes("goo.gl") || input.includes("g.page") || input.includes("app.goo.gl") || input.includes("googleusercontent.com")) {
-            status.innerHTML = "⚠️ This is a mobile short link. To keep this tool 100% free, please search your business in a standard web browser (like Chrome or Safari) and copy the long link from the search bar instead!";
-            return;
-        }
+        showStatus("🔍 Analyzing Google Maps URL...", "loading");
 
-        // Extract Place ID (ChIJ...)
-        let chij = input.match(/(ChIJ[a-zA-Z0-9_-]{23})/);
-        
-        // Extract CID Hex (0x...)
-        let cidHex = input.match(/!1s(0x[0-9a-fA-F]+:0x[0-9a-fA-F]+)/);
+        try {
+            let resolvedUrl = rawUrl;
 
-        if (chij) {
-            reviewUrl = `https://search.google.com/local/writereview?placeid=${chij[1]}`;
-            readyToWrite();
-        } else if (cidHex) {
-            reviewUrl = `https://search.google.com/local/writereview?fid=${cidHex[1]}`;
-            readyToWrite();
-        } else {
-            status.innerHTML = "❌ Could not find a valid Google Business code in this link. Try copying the link directly from a desktop browser search bar.";
+            // Resolve mobile short URLs (goo.gl, maps.app.goo.gl, g.page)
+            if (rawUrl.includes("goo.gl") || rawUrl.includes("g.page") || rawUrl.includes("app.goo.gl")) {
+                const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(rawUrl)}`;
+                const response = await fetch(proxyUrl);
+                if (response.ok) {
+                    resolvedUrl = response.url; // Extract target URL from the proxy redirect header
+                } else {
+                    throw new Error("Could not reach Google servers to expand the short link.");
+                }
+            }
+
+            const decodedUrl = decodeURIComponent(resolvedUrl);
+
+            // Match 1: Extract standard ChIJ Place ID
+            const chijMatch = decodedUrl.match(/(ChIJ[a-zA-Z0-9_-]{23})/);
+            
+            // Match 2: Extract CID hex string patterns (e.g. !1s0x...:0x...)
+            const hexMatch = decodedUrl.match(/!1s(0x[0-9a-fA-F]+:0x[0-9a-fA-F]+)/);
+
+            if (chijMatch) {
+                const placeId = chijMatch[1];
+                targetReviewUrl = `https://search.google.com/local/writereview?placeid=${placeId}`;
+            } else if (hexMatch) {
+                const cidHex = hexMatch[1];
+                targetReviewUrl = `https://search.google.com/local/writereview?fid=${cidHex}`;
+            } else {
+                throw new Error("Could not find a valid Google Business identifier inside that link. Please make sure you are sharing a specific business location.");
+            }
+
+            // Success Transition
+            stepState = 'write';
+            processBtn.innerText = "⚡ Write to NFC Tag";
+            processBtn.style.backgroundColor = "#059669"; // Change color to Success Green
+            showStatus("Link processed successfully! Ready to write to NFC.", "success");
+
+        } catch (error) {
+            showStatus(`❌ Processing Error: ${error.message}`, "error");
+            stepState = 'parse';
+            processBtn.innerText = "Set Up Tag Link";
+            processBtn.style.backgroundColor = '';
         }
     }
 
-    function readyToWrite() {
-        let btn = document.getElementById('btn');
-        let status = document.getElementById('status');
-        btn.innerHTML = "⚡ Write to NFC Tag";
-        btn.style.background = "#059669";
-        btn.onclick = writeNfc;
-        status.innerHTML = "✅ Link processed! Ready to program.";
-    }
-
-    async function writeNfc() {
-        let status = document.getElementById('status');
+    // Step 2: Push the generated link to the Physical NFC tag
+    async function handleNfcWriting() {
         if (!('NDEFReader' in window)) {
-            status.innerHTML = "❌ NFC writing is only supported using Google Chrome on an Android phone.";
+            showStatus("❌ NFC Writing is not supported on this browser/device. Please open this page in Google Chrome on an Android device to program your tag.", "error");
             return;
         }
 
         try {
-            status.innerHTML = "⌛ TAP TAG: Hold NFC tag to the back of your phone now...";
+            showStatus("⌛ TAP TAG: Hold your blank NFC tag against the back of your phone now...", "loading");
+            
             const ndef = new NDEFReader();
             await ndef.write({
-                records: [{ recordType: "url", data: reviewUrl }]
+                records: [{ recordType: "url", data: targetReviewUrl }]
             });
-            status.innerHTML = "🎉 SUCCESS! Your NFC Tag is programmed!";
+            
+            showStatus("🎉 SUCCESS! Your NFC Tag has been permanently programmed and is ready to use.", "success");
+            
+            // Reset state
+            stepState = 'parse';
+            processBtn.innerText = "Set Up Tag Link";
+            processBtn.style.backgroundColor = '';
         } catch (error) {
-            status.innerHTML = `❌ Failed to write: ${error.message}`;
+            showStatus(`❌ NFC Write Failed: ${error.message}. Please try holding the tag closer to the phone's sensor.`, "error");
         }
+    }
+
+    function showStatus(message, type) {
+        statusDiv.className = '';
+        statusDiv.innerText = message;
+        if (type === 'loading') statusDiv.classList.add('status-loading');
+        if (type === 'success') statusDiv.classList.add('status-success');
+        if (type === 'error') statusDiv.classList.add('status-error');
     }
 </script>
 
