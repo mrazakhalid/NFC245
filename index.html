@@ -13,6 +13,9 @@
             --text-main: #111827;
             --text-muted: #4b5563;
             --border: #e5e7eb;
+            --warning-bg: #fffbeb;
+            --warning-border: #f59e0b;
+            --warning-text: #b45309;
         }
 
         body {
@@ -140,6 +143,36 @@
             margin-top: 5px;
         }
 
+        /* Instructions Warnings Panel */
+        .warning-box {
+            background: var(--warning-bg);
+            border: 1px solid var(--warning-border);
+            color: var(--warning-text);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: left;
+            display: none;
+        }
+
+        .warning-box h4 {
+            margin: 0 0 8px 0;
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .warning-box ol {
+            margin: 0;
+            padding-left: 18px;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .warning-box li {
+            margin-bottom: 6px;
+        }
+
         button {
             background-color: var(--primary);
             color: white;
@@ -208,10 +241,21 @@
 
     <div id="container-link" class="input-group" style="display: none;">
         <label for="mapsUrl">Paste Google Maps Link</label>
-        <input type="text" id="mapsUrl" placeholder="http://googleusercontent.com/maps.google.com/... or full URL" autocomplete="off">
+        <input type="text" id="mapsUrl" placeholder="Paste full Google Maps address bar URL..." autocomplete="off">
     </div>
 
-    <div class="preview-box">
+    <div id="warningBox" class="warning-box">
+        <h4>⚠️ Short Link Detected!</h4>
+        <p style="color: inherit; font-size: 12px; margin-bottom: 10px;">Google short links do not contain the needed Place details. Please get the full URL using these steps:</p>
+        <ol>
+            <li>Open the short link in any web browser (Chrome, Safari, etc.).</li>
+            <li>Let the page load fully until you see the map and the search sidebar.</li>
+            <li>Go to the browser's address bar at the top, select and copy the complete, long URL (it will start with <code>https://www.google.com/maps/place/...</code>).</li>
+            <li>Paste that expanded long URL into the box above.</li>
+        </ol>
+    </div>
+
+    <div class="preview-box" id="previewBox">
         <div class="preview-title">📡 Code to be programmed on tag:</div>
         <span id="previewDisplay" class="preview-code">Waiting for business selection...</span>
     </div>
@@ -225,6 +269,12 @@
 </gmp-map>
 
 <script>
+    // ==========================================
+    // ⚙️ CONFIGURATION SETTING: SHOW/HIDE PREVIEW
+    // Set to 'true' to show the preview box, or 'false' to hide it.
+    // ==========================================
+    const SHOW_PREVIEW_BOX = true; 
+
     let currentTab = 'search';
     let targetReviewUrl = '';
     let isReadyToWrite = false;
@@ -232,9 +282,14 @@
     // Element Selectors
     const autocompleteInput = document.getElementById('autocomplete');
     const mapsUrlInput = document.getElementById('mapsUrl');
+    const previewBox = document.getElementById('previewBox');
     const previewDisplay = document.getElementById('previewDisplay');
+    const warningBox = document.getElementById('warningBox');
     const actionBtn = document.getElementById('actionBtn');
     const statusDiv = document.getElementById('status');
+
+    // Apply the preview show/hide setting right away
+    previewBox.style.display = SHOW_PREVIEW_BOX ? 'block' : 'none';
 
     // Switch between Search Autocomplete & Paste Link inputs
     function switchTab(tabName) {
@@ -256,11 +311,11 @@
         actionBtn.disabled = currentTab === 'search';
         actionBtn.style.backgroundColor = '';
         statusDiv.style.display = 'none';
+        warningBox.style.display = 'none';
     }
 
     // Initialize the Official Google Places Autocomplete library
     async function initGoogleLibrary() {
-        // Automatically imports Google Maps internal Library
         const { Place } = await google.maps.importLibrary("places");
         
         const autocomplete = new google.maps.places.Autocomplete(autocompleteInput, {
@@ -268,7 +323,6 @@
             fields: ['place_id', 'name']
         });
 
-        // Event listener when user clicks on a search suggestion
         autocomplete.addListener('place_changed', () => {
             const place = autocomplete.getPlace();
             if (!place.place_id) {
@@ -281,9 +335,7 @@
         });
     }
 
-    // Initialize Autocomplete once script is fully loaded by Google
     window.onload = () => {
-        // Wait for Google JS to bind
         setTimeout(() => {
             if (window.google && window.google.maps) {
                 initGoogleLibrary();
@@ -293,12 +345,12 @@
         }, 1000);
     };
 
-    // Manual input parsing for pasted URLs (Long + Short URLs)
     mapsUrlInput.addEventListener('input', () => {
         resetAppState();
         actionBtn.disabled = false;
     });
 
+    // Handle Link Processing with warning checks
     async function handleLinkProcess() {
         const rawUrl = mapsUrlInput.value.trim();
         if (!rawUrl) {
@@ -306,36 +358,27 @@
             return;
         }
 
+        // Detect short link patterns
+        const isShortLink = rawUrl.includes("goo.gl") || 
+                            rawUrl.includes("g.page") || 
+                            rawUrl.includes("app.goo.gl") || 
+                            rawUrl.includes("googleusercontent.com");
+
+        if (isShortLink) {
+            warningBox.style.display = 'block';
+            showStatus("⚠️ Please provide the expanded full desktop URL.", "error");
+            actionBtn.disabled = true;
+            return;
+        }
+
         showStatus("🔍 Processing URL...", "loading");
 
         try {
-            let resolvedUrl = rawUrl;
+            const decodedUrl = decodeURIComponent(rawUrl);
 
-            // Handle mobile short URLs securely via proxy parsing
-            if (rawUrl.includes("goo.gl") || rawUrl.includes("g.page") || rawUrl.includes("app.goo.gl") || rawUrl.includes("googleusercontent.com")) {
-                const proxyUrl = `https://corsproxy.io/?url=${encodeURIComponent(rawUrl)}`;
-                
-                const response = await fetch(proxyUrl, { redirect: 'manual' });
-                
-                if (response.ok || response.status === 302 || response.status === 301) {
-                    const locationHeader = response.headers.get('location');
-                    if (locationHeader) {
-                        resolvedUrl = locationHeader;
-                    } else {
-                        const text = await response.text();
-                        const urlMatch = text.match(/href="([^"]+)"/) || text.match(/window\.location\.replace\("([^"]+)"\)/);
-                        resolvedUrl = urlMatch ? urlMatch[1] : response.url;
-                    }
-                } else {
-                    throw new Error("Could not contact Google services to resolve short link.");
-                }
-            }
-
-            const decodedUrl = decodeURIComponent(resolvedUrl);
-
-            // Match standard Place ID
+            // Match standard Place ID (ChIJ...)
             const chijMatch = decodedUrl.match(/(ChIJ[a-zA-Z0-9_-]{23})/);
-            // Match Hex Location Code (FID)
+            // Match Hex Location Code (FID) from !1s... parameter
             const hexMatch = decodedUrl.match(/!1s(0x[0-9a-fA-F]+:0x[0-9a-fA-F]+)/);
 
             if (chijMatch) {
@@ -359,12 +402,11 @@
         isReadyToWrite = true;
         previewDisplay.innerText = targetReviewUrl;
         actionBtn.innerText = "⚡ Write to NFC Tag";
-        actionBtn.style.backgroundColor = "#059669"; // Turn Green
+        actionBtn.style.backgroundColor = "#059669";
         actionBtn.disabled = false;
         showStatus(`✅ ${successMsg}. Ready to write!`, "success");
     }
 
-    // Handle Action Button Router
     actionBtn.addEventListener('click', async () => {
         if (!isReadyToWrite && currentTab === 'link') {
             await handleLinkProcess();
@@ -373,7 +415,6 @@
         }
     });
 
-    // WebNFC write function
     async function writeNfcTag() {
         if (!('NDEFReader' in window)) {
             showStatus("❌ NFC programming is only supported using Google Chrome on Android.", "error");
