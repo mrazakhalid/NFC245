@@ -46,15 +46,29 @@
 
         .icon {
             font-size: 50px;
-            margin-bottom: 15px;
+            margin-bottom: 5px; /* Reduced to make room for secret button */
+        }
+
+        /* Dedicated Secret Trigger Zone directly under globe */
+        .secret-trigger {
+            width: 40px;
+            height: 8px;
+            background: transparent;
+            margin: 0 auto 15px auto;
+            border-radius: 4px;
             cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        /* Subtle visual cue only when active/pressed */
+        .secret-trigger:active {
+            background: rgba(79, 70, 229, 0.1);
         }
 
         h1 {
             font-size: 24px;
             margin: 0 0 8px 0;
             color: var(--text-main);
-            cursor: pointer;
         }
 
         p {
@@ -229,8 +243,10 @@
 <body>
 
 <div class="card">
-    <div class="icon" id="secretIcon">🔮</div>
-    <h1 id="secretTitle">NFC Review Setup</h1>
+    <div class="icon">🔮</div>
+    <div class="secret-trigger" id="secretBtn"></div>
+    
+    <h1>NFC Review Setup</h1>
     <p>Prepare your target review link and write it directly to your physical NFC tag.</p>
 
     <div class="tab-container">
@@ -274,11 +290,10 @@
 
 <script>
     // ==========================================
-    // ⚙️ CONFIGURATION SETTING: SHOW/HIDE PREVIEW
-    // Set to 'true' to show the preview box, or 'false' to hide it.
-    // Can be toggled live by long-pressing (4 seconds) the Header or Icon.
+    // ⚙️ CONFIGURATION SETTING: DISABLED BY DEFAULT
+    // Set to 'false' to hide preview pane on initial application load
     // ==========================================
-    let SHOW_PREVIEW_BOX = true; 
+    let SHOW_PREVIEW_BOX = false; 
 
     let currentTab = 'search';
     let targetReviewUrl = '';
@@ -292,10 +307,9 @@
     const warningBox = document.getElementById('warningBox');
     const actionBtn = document.getElementById('actionBtn');
     const statusDiv = document.getElementById('status');
-    const secretTitle = document.getElementById('secretTitle');
-    const secretIcon = document.getElementById('secretIcon');
+    const secretBtn = document.getElementById('secretBtn');
 
-    // Apply the preview show/hide setting right away
+    // Apply the preview initial hide setting right away
     previewBox.style.display = SHOW_PREVIEW_BOX ? 'block' : 'none';
 
     // ========================================================
@@ -305,10 +319,10 @@
     const holdDuration = 4000; // 4000ms = 4 seconds
 
     function startPress(e) {
-        // Prevent default action (context menu popping on mobile)
+        // Prevent default actions to keep mobile browser happy
         e.preventDefault();
         holdTimer = setTimeout(() => {
-            // Toggle the visibility
+            // Toggle the visibility state
             SHOW_PREVIEW_BOX = !SHOW_PREVIEW_BOX;
             previewBox.style.display = SHOW_PREVIEW_BOX ? 'block' : 'none';
             
@@ -321,16 +335,14 @@
         clearTimeout(holdTimer);
     }
 
-    // Bind secret triggers to Title and Icon for Touch (mobile) & Mouse (desktop)
-    [secretTitle, secretIcon].forEach(element => {
-        element.addEventListener('mousedown', startPress);
-        element.addEventListener('mouseup', endPress);
-        element.addEventListener('mouseleave', endPress);
-        
-        element.addEventListener('touchstart', startPress, { passive: false });
-        element.addEventListener('touchend', endPress);
-        element.addEventListener('touchcancel', endPress);
-    });
+    // Bind secret triggers exclusively to the hidden button directly under the globe
+    secretBtn.addEventListener('mousedown', startPress);
+    secretBtn.addEventListener('mouseup', endPress);
+    secretBtn.addEventListener('mouseleave', endPress);
+    
+    secretBtn.addEventListener('touchstart', startPress, { passive: false });
+    secretBtn.addEventListener('touchend', endPress);
+    secretBtn.addEventListener('touchcancel', endPress);
 
     // Switch between Search Autocomplete & Paste Link inputs
     function switchTab(tabName) {
