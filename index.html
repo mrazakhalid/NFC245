@@ -163,7 +163,7 @@
 
     <div class="input-group">
         <label for="mapsUrl">Paste Google Maps Link</label>
-        <input type="text" id="mapsUrl" placeholder="https://maps.app.goo.gl/..." autocomplete="off">
+        <input type="text" id="mapsUrl" placeholder="Paste your link here..." autocomplete="off">
     </div>
     
     <button id="processBtn">Set Up Tag Link</button>
@@ -208,16 +208,26 @@
         try {
             let resolvedUrl = rawUrl;
 
-            // Resolve mobile short URLs (goo.gl, g.page, app.goo.gl, googleusercontent)
-            if (rawUrl.includes("goo.gl") || rawUrl.includes("g.page") || rawUrl.includes("app.goo.gl") || rawUrl.includes("googleusercontent.com")) {
-                // Corrected proxy format: prepend https://corsproxy.io/?url=
-                const proxyUrl = `https://corsproxy.io/?url=${encodeURIComponent(rawUrl)}`;
+            // Detect if it is a shortened/mobile link
+            const isShortLink = rawUrl.includes("goo.gl") || 
+                                rawUrl.includes("g.page") || 
+                                rawUrl.includes("app.goo.gl") || 
+                                rawUrl.includes("googleusercontent.com");
+
+            if (isShortLink) {
+                // Use unshorten.me API to securely expand the URL
+                const unshortenApiUrl = `https://unshorten.me/json/${encodeURIComponent(rawUrl)}`;
                 
-                const response = await fetch(proxyUrl);
+                const response = await fetch(unshortenApiUrl);
                 if (response.ok) {
-                    resolvedUrl = response.url; // Extract target URL from proxy redirect headers
+                    const data = await response.json();
+                    if (data.success && data.resolved_url) {
+                        resolvedUrl = data.resolved_url;
+                    } else {
+                        throw new Error("We couldn't expand this short link. Please try copying the full link directly from a web browser.");
+                    }
                 } else {
-                    throw new Error("Could not reach Google servers to expand the short link. Try pasting the full browser link instead.");
+                    throw new Error("The redirect resolver service is temporarily unavailable.");
                 }
             }
 
