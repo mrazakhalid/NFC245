@@ -5,12 +5,49 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NFC Google Review Writer</title>
     <style>
-        body { font-family: sans-serif; text-align: center; background: #f3f4f6; padding: 20px; margin-top: 50px;}
-        .card { background: white; padding: 30px; border-radius: 12px; max-width: 380px; margin: 0 auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        input { width: 100%; padding: 12px; margin: 15px 0; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
-        button { background: #4f46e5; color: white; border: none; padding: 14px; width: 100%; border-radius: 6px; font-weight: bold; cursor: pointer; }
-        button:disabled { background: #ccc; }
-        #status { margin-top: 15px; font-weight: bold; font-size: 14px; color: #374151; }
+        body { 
+            font-family: sans-serif; 
+            text-align: center; 
+            background: #f3f4f6; 
+            padding: 20px; 
+            margin-top: 50px;
+        }
+        .card { 
+            background: white; 
+            padding: 30px; 
+            border-radius: 12px; 
+            max-width: 380px; 
+            margin: 0 auto; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
+        }
+        input { 
+            width: 100%; 
+            padding: 12px; 
+            margin: 15px 0; 
+            border: 1px solid #ccc; 
+            border-radius: 6px; 
+            box-sizing: border-box; 
+        }
+        button { 
+            background: #4f46e5; 
+            color: white; 
+            border: none; 
+            padding: 14px; 
+            width: 100%; 
+            border-radius: 6px; 
+            font-weight: bold; 
+            cursor: pointer; 
+        }
+        button:disabled { 
+            background: #ccc; 
+        }
+        #status { 
+            margin-top: 15px; 
+            font-weight: bold; 
+            font-size: 14px; 
+            color: #374151; 
+            line-height: 1.4;
+        }
     </style>
 </head>
 <body>
@@ -37,8 +74,8 @@
             return;
         }
 
-        // If it's a mobile short link, instruct the user how to paste the long one
-        if (input.includes("goo.gl") || input.includes("g.page") || input.includes("maps.app.goo.gl") || input.includes("googleusercontent.com")) {
+        // Catch mobile short links and direct the user
+        if (input.includes("goo.gl") || input.includes("g.page") || input.includes("app.goo.gl") || input.includes("googleusercontent.com")) {
             status.innerHTML = "⚠️ This is a mobile short link. To keep this tool 100% free, please search your business in a standard web browser (like Chrome or Safari) and copy the long link from the search bar instead!";
             return;
         }
