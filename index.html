@@ -1,64 +1,130 @@
-// Programmatic short-link expansion and hex extraction
-    async function handleLinkProcess() {
-        const rawUrl = mapsUrlInput.value.trim();
-        if (!rawUrl) {
-            showStatus("Please paste a valid Google Maps link first.", "error");
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NFC Google Review Writer</title>
+    <style>
+        body { 
+            font-family: sans-serif; 
+            text-align: center; 
+            background: #f3f4f6; 
+            padding: 20px; 
+            margin-top: 50px;
+        }
+        .card { 
+            background: white; 
+            padding: 30px; 
+            border-radius: 12px; 
+            max-width: 380px; 
+            margin: 0 auto; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
+        }
+        input { 
+            width: 100%; 
+            padding: 12px; 
+            margin: 15px 0; 
+            border: 1px solid #ccc; 
+            border-radius: 6px; 
+            box-sizing: border-box; 
+        }
+        button { 
+            background: #4f46e5; 
+            color: white; 
+            border: none; 
+            padding: 14px; 
+            width: 100%; 
+            border-radius: 6px; 
+            font-weight: bold; 
+            cursor: pointer; 
+        }
+        button:disabled { 
+            background: #ccc; 
+        }
+        #status { 
+            margin-top: 15px; 
+            font-weight: bold; 
+            font-size: 14px; 
+            color: #374151; 
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>NFC Link Maker 🪄</h2>
+    <p>Paste your full Google Maps browser link below:</p>
+    
+    <input type="text" id="mapsUrl" placeholder="Paste link here..." autocomplete="off">
+    <button id="btn" onclick="process()">1. Process Link</button>
+    <div id="status"></div>
+</div>
+
+<script>
+    let reviewUrl = "";
+
+    function process() {
+        let input = document.getElementById('mapsUrl').value.trim();
+        let status = document.getElementById('status');
+        let btn = document.getElementById('btn');
+
+        if (!input) {
+            status.innerHTML = "❌ Please paste a link first.";
             return;
         }
 
-        showStatus("🔍 Expanding short link via HTTP...", "loading");
+        // Catch mobile short links and direct the user
+        if (input.includes("goo.gl") || input.includes("g.page") || input.includes("app.goo.gl") || input.includes("googleusercontent.com")) {
+            status.innerHTML = "⚠️ This is a mobile short link. To keep this tool 100% free, please search your business in a standard web browser (like Chrome or Safari) and copy the long link from the search bar instead!";
+            return;
+        }
 
-        try {
-            let decodedUrl = decodeURIComponent(rawUrl);
-            
-            // 1. Detect if it is a short link
-            const isShortLink = rawUrl.includes("goo.gl") || 
-                                rawUrl.includes("g.page") || 
-                                rawUrl.includes("app.goo.gl") || 
-                                rawUrl.includes("googleusercontent.com");
+        // Extract Place ID (ChIJ...)
+        let chij = input.match(/(ChIJ[a-zA-Z0-9_-]{23})/);
+        
+        // Extract CID Hex (0x...)
+        let cidHex = input.match(/!1s(0x[0-9a-fA-F]+:0x[0-9a-fA-F]+)/);
 
-            if (isShortLink) {
-                // 2. Make an HTTP request via AllOrigins proxy to bypass browser CORS blocks
-                const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(rawUrl)}`;
-                
-                const response = await fetch(proxyUrl);
-                if (!response.ok) {
-                    throw new Error("HTTP request failed. Could not reach proxy server.");
-                }
-
-                const data = await response.json();
-                
-                if (data && data.contents) {
-                    // This raw HTML string contains the expanded long URL Google redirected to
-                    decodedUrl = decodeURIComponent(data.contents);
-                } else {
-                    throw new Error("Failed to read redirected URL payload.");
-                }
-            }
-
-            // 3. Locate the hexadecimal code (CID) embedded inside the string (!1s0x...:0x...)
-            // Matches: 0x[hex-string]:0x[hex-string]
-            const hexMatch = decodedUrl.match(/(0x[0-9a-fA-F]+:0x[0-9a-fA-F]+)/);
-            
-            // Fallback: Check for standard ChIJ Place ID
-            const chijMatch = decodedUrl.match(/(ChIJ[a-zA-Z0-9_-]{23})/);
-
-            if (hexMatch) {
-                // Step 3: Format Your Clean Place ID/CID Long Link using the "fid" parameter
-                const cidHex = hexMatch[1];
-                targetReviewUrl = `https://search.google.com/local/writereview?fid=${cidHex}`;
-                setReadyToWriteState("Short link successfully expanded and parsed!");
-            } else if (chijMatch) {
-                const placeId = chijMatch[1];
-                targetReviewUrl = `https://search.google.com/local/writereview?placeid=${placeId}`;
-                setReadyToWriteState("Short link successfully expanded and parsed!");
-            } else {
-                throw new Error("Could not find a valid hexadecimal CID (0x...:0x...) or Place ID in the expanded URL.");
-            }
-
-        } catch (error) {
-            showStatus(`❌ ${error.message}`, "error");
-            resetAppState();
-            if (currentTab === 'link') actionBtn.disabled = false;
+        if (chij) {
+            reviewUrl = `https://search.google.com/local/writereview?placeid=${chij[1]}`;
+            readyToWrite();
+        } else if (cidHex) {
+            reviewUrl = `https://search.google.com/local/writereview?fid=${cidHex[1]}`;
+            readyToWrite();
+        } else {
+            status.innerHTML = "❌ Could not find a valid Google Business code in this link. Try copying the link directly from a desktop browser search bar.";
         }
     }
+
+    function readyToWrite() {
+        let btn = document.getElementById('btn');
+        let status = document.getElementById('status');
+        btn.innerHTML = "⚡ Write to NFC Tag";
+        btn.style.background = "#059669";
+        btn.onclick = writeNfc;
+        status.innerHTML = "✅ Link processed! Ready to program.";
+    }
+
+    async function writeNfc() {
+        let status = document.getElementById('status');
+        if (!('NDEFReader' in window)) {
+            status.innerHTML = "❌ NFC writing is only supported using Google Chrome on an Android phone.";
+            return;
+        }
+
+        try {
+            status.innerHTML = "⌛ TAP TAG: Hold NFC tag to the back of your phone now...";
+            const ndef = new NDEFReader();
+            await ndef.write({
+                records: [{ recordType: "url", data: reviewUrl }]
+            });
+            status.innerHTML = "🎉 SUCCESS! Your NFC Tag is programmed!";
+        } catch (error) {
+            status.innerHTML = `❌ Failed to write: ${error.message}`;
+        }
+    }
+</script>
+
+</body>
+</html>
