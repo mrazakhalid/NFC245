@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NFC Google Review Programmer</title>
+    <title>NFC Tag Suite</title>
     <style>
         :root {
             --primary: #4f46e5;
@@ -16,6 +16,8 @@
             --warning-bg: #fffbeb;
             --warning-border: #f59e0b;
             --warning-text: #b45309;
+            --success: #059669;
+            --success-hover: #047857;
         }
 
         body {
@@ -29,7 +31,7 @@
             align-items: center;
             min-height: 100vh;
             box-sizing: border-box;
-            user-select: none; /* Prevents text selection highlight during long press */
+            user-select: none;
             -webkit-user-select: none;
         }
 
@@ -38,7 +40,7 @@
             padding: 30px;
             border-radius: 20px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
-            max-width: 460px;
+            max-width: 480px;
             width: 100%;
             text-align: center;
             border: 1px solid var(--border);
@@ -46,10 +48,9 @@
 
         .icon {
             font-size: 50px;
-            margin-bottom: 5px; /* Reduced to make room for secret button */
+            margin-bottom: 5px;
         }
 
-        /* Dedicated Secret Trigger Zone directly under globe */
         .secret-trigger {
             width: 40px;
             height: 8px;
@@ -60,7 +61,6 @@
             transition: background 0.2s;
         }
 
-        /* Subtle visual cue only when active/pressed */
         .secret-trigger:active {
             background: rgba(79, 70, 229, 0.1);
         }
@@ -131,6 +131,30 @@
             outline: none;
         }
 
+        /* Sub-navigation inside Maps */
+        .sub-tab-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .sub-tab {
+            flex: 1;
+            padding: 8px;
+            background: #f3f4f6;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            color: var(--text-muted);
+            text-align: center;
+        }
+
+        .sub-tab.active {
+            background: var(--primary);
+            color: white;
+        }
+
         /* Preview Code Panel */
         .preview-box {
             background: #f3f4f6;
@@ -161,7 +185,7 @@
             margin-top: 5px;
         }
 
-        /* Instructions Warnings Panel */
+        /* Warnings Panel */
         .warning-box {
             background: var(--warning-bg);
             border: 1px solid var(--warning-border);
@@ -187,10 +211,59 @@
             line-height: 1.5;
         }
 
-        .warning-box li {
-            margin-bottom: 6px;
+        /* Socials Row Layout */
+        .socials-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-top: 15px;
         }
 
+        .social-card {
+            background: #f9fafb;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 15px;
+            text-align: left;
+        }
+
+        .social-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .social-name {
+            font-weight: 700;
+            font-size: 14px;
+            color: var(--text-main);
+        }
+
+        .social-url {
+            font-family: monospace;
+            font-size: 11px;
+            color: var(--text-muted);
+            word-break: break-all;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .social-write-btn {
+            background-color: var(--success);
+            padding: 8px 12px;
+            font-size: 12px;
+            font-weight: bold;
+            border-radius: 6px;
+            width: auto;
+            display: inline-block;
+        }
+
+        .social-write-btn:hover {
+            background-color: var(--success-hover);
+        }
+
+        /* Global Button */
         button {
             background-color: var(--primary);
             color: white;
@@ -228,7 +301,6 @@
         .status-success { display: block !important; background: #ecfdf5; color: #065f46; }
         .status-error { display: block !important; background: #fef2f2; color: #991b1b; }
 
-        /* Hidden standard map components to prevent UI clutter */
         gmp-map {
             display: none !important;
         }
@@ -246,33 +318,107 @@
     <div class="icon">🔮</div>
     <div class="secret-trigger" id="secretBtn"></div>
     
-    <h1>NFC Review Setup</h1>
-    <p>Prepare your target review link and write it directly to your physical NFC tag.</p>
+    <h1>NFC Setup Suite</h1>
+    <p>Program Google Reviews or your social profiles directly onto physical NFC tags.</p>
 
     <div class="tab-container">
-        <div id="tab-search" class="tab active" onclick="switchTab('search')">Option 1: Search Name</div>
-        <div id="tab-link" class="tab" onclick="switchTab('link')">Option 2: Paste Link</div>
+        <div id="tab-maps-group" class="tab active" onclick="switchMainTab('maps')">📍 Google Maps</div>
+        <div id="tab-socials-group" class="tab" onclick="switchMainTab('socials')">📱 Social Links</div>
     </div>
     
-    <div id="container-search" class="input-group">
-        <label for="autocomplete">Search Google Business</label>
-        <input type="text" id="autocomplete" placeholder="Type business name..." autocomplete="off">
+    <div id="section-maps">
+        <div class="sub-tab-container">
+            <div id="sub-tab-search" class="sub-tab active" onclick="switchMapsSubTab('search')">Search Name</div>
+            <div id="sub-tab-link" class="sub-tab" onclick="switchMapsSubTab('link')">Paste Link</div>
+        </div>
+
+        <div id="container-search" class="input-group">
+            <label for="autocomplete">Search Google Business</label>
+            <input type="text" id="autocomplete" placeholder="Type business name..." autocomplete="off">
+        </div>
+
+        <div id="container-link" class="input-group" style="display: none;">
+            <label for="mapsUrl">Paste Google Maps Link</label>
+            <input type="text" id="mapsUrl" placeholder="Paste full Google Maps address bar URL..." autocomplete="off">
+        </div>
+
+        <div id="warningBox" class="warning-box">
+            <h4>⚠️ Short Link Detected!</h4>
+            <p style="color: inherit; font-size: 12px; margin-bottom: 10px;">Google short links do not contain the needed Place details. Please get the full URL using these steps:</p>
+            <ol>
+                <li>Open the short link in any web browser.</li>
+                <li>Let the page load fully until you see the map and the search sidebar.</li>
+                <li>Go to the browser's address bar at the top, select and copy the complete, long URL.</li>
+                <li>Paste that expanded long URL into the box above.</li>
+            </ol>
+        </div>
+
+        <button id="actionBtn" disabled style="margin-bottom: 20px;">1. Choose a Business First</button>
     </div>
 
-    <div id="container-link" class="input-group" style="display: none;">
-        <label for="mapsUrl">Paste Google Maps Link</label>
-        <input type="text" id="mapsUrl" placeholder="Paste full Google Maps address bar URL..." autocomplete="off">
-    </div>
+    <div id="section-socials" style="display: none;">
+        <div class="input-group">
+            <label for="socialUsername">Enter Account/Profile Username</label>
+            <input type="text" id="socialUsername" placeholder="e.g., graceautomation" autocomplete="off">
+        </div>
 
-    <div id="warningBox" class="warning-box">
-        <h4>⚠️ Short Link Detected!</h4>
-        <p style="color: inherit; font-size: 12px; margin-bottom: 10px;">Google short links do not contain the needed Place details. Please get the full URL using these steps:</p>
-        <ol>
-            <li>Open the short link in any web browser (Chrome, Safari, etc.).</li>
-            <li>Let the page load fully until you see the map and the search sidebar.</li>
-            <li>Go to the browser's address bar at the top, select and copy the complete, long URL (it will start with <code>https://www.google.com/maps/place/...</code>).</li>
-            <li>Paste that expanded long URL into the box above.</li>
-        </ol>
+        <div class="socials-list" id="socialsContainer">
+            <div class="social-card">
+                <div class="social-header">
+                    <span class="social-name">📺 YouTube (Auto-Subscribe)</span>
+                </div>
+                <span class="social-url" id="url-youtube">https://www.youtube.com/</span>
+                <button class="social-write-btn" onclick="triggerSocialWrite('youtube')">⚡ Write YouTube Tag</button>
+            </div>
+
+            <div class="social-card">
+                <div class="social-header">
+                    <span class="social-name">🐦 X / Twitter (Auto-Follow)</span>
+                </div>
+                <span class="social-url" id="url-twitter">https://twitter.com/</span>
+                <button class="social-write-btn" onclick="triggerSocialWrite('twitter')">⚡ Write X / Twitter Tag</button>
+            </div>
+
+            <div class="social-card">
+                <div class="social-header">
+                    <span class="social-name">👥 Facebook</span>
+                </div>
+                <span class="social-url" id="url-facebook">https://www.facebook.com/</span>
+                <button class="social-write-btn" onclick="triggerSocialWrite('facebook')">⚡ Write Facebook Tag</button>
+            </div>
+
+            <div class="social-card">
+                <div class="social-header">
+                    <span class="social-name">🎵 TikTok</span>
+                </div>
+                <span class="social-url" id="url-tiktok">https://www.tiktok.com/</span>
+                <button class="social-write-btn" onclick="triggerSocialWrite('tiktok')">⚡ Write TikTok Tag</button>
+            </div>
+
+            <div class="social-card">
+                <div class="social-header">
+                    <span class="social-name">📸 Instagram</span>
+                </div>
+                <span class="social-url" id="url-instagram">https://www.instagram.com/</span>
+                <button class="social-write-btn" onclick="triggerSocialWrite('instagram')">⚡ Write Instagram Tag</button>
+            </div>
+
+            <div class="social-card">
+                <div class="social-header">
+                    <span class="social-name">💼 LinkedIn (Company Page)</span>
+                </div>
+                <span class="social-url" id="url-linkedin">https://www.linkedin.com/</span>
+                <button class="social-write-btn" onclick="triggerSocialWrite('linkedin')">⚡ Write LinkedIn Tag</button>
+            </div>
+
+            <div class="social-card">
+                <div class="social-header">
+                    <span class="social-name">🎮 Twitch</span>
+                </div>
+                <span class="social-url" id="url-twitch">https://www.twitch.tv/</span>
+                <button class="social-write-btn" onclick="triggerSocialWrite('twitch')">⚡ Write Twitch Tag</button>
+            </div>
+        </div>
     </div>
 
     <div class="preview-box" id="previewBox">
@@ -280,7 +426,6 @@
         <span id="previewDisplay" class="preview-code">Waiting for business selection...</span>
     </div>
     
-    <button id="actionBtn" disabled>1. Choose a Business First</button>
     <div id="status"></div>
 </div>
 
@@ -289,13 +434,11 @@
 </gmp-map>
 
 <script>
-    // ==========================================
-    // ⚙️ CONFIGURATION SETTING: DISABLED BY DEFAULT
-    // Set to 'false' to hide preview pane on initial application load
-    // ==========================================
+    // Hidden Preview Switch (Default disabled)
     let SHOW_PREVIEW_BOX = false; 
 
-    let currentTab = 'search';
+    let activeMainTab = 'maps';
+    let mapsSubTab = 'search';
     let targetReviewUrl = '';
     let isReadyToWrite = false;
 
@@ -308,25 +451,23 @@
     const actionBtn = document.getElementById('actionBtn');
     const statusDiv = document.getElementById('status');
     const secretBtn = document.getElementById('secretBtn');
+    
+    const socialUsernameInput = document.getElementById('socialUsername');
 
-    // Apply the preview initial hide setting right away
+    // Initial Hide of preview panel
     previewBox.style.display = SHOW_PREVIEW_BOX ? 'block' : 'none';
 
-    // ========================================================
+    // ==========================================
     // 🕵️‍♂️ HIDDEN LONG PRESS CONTROLLER (4-Second Hold)
-    // ========================================================
+    // ==========================================
     let holdTimer;
-    const holdDuration = 4000; // 4000ms = 4 seconds
+    const holdDuration = 4000;
 
     function startPress(e) {
-        // Prevent default actions to keep mobile browser happy
         e.preventDefault();
         holdTimer = setTimeout(() => {
-            // Toggle the visibility state
             SHOW_PREVIEW_BOX = !SHOW_PREVIEW_BOX;
             previewBox.style.display = SHOW_PREVIEW_BOX ? 'block' : 'none';
-            
-            // Pop an alert notifying user of successful change
             alert(`Preview Panel is now: ${SHOW_PREVIEW_BOX ? 'ENABLED' : 'DISABLED'}`);
         }, holdDuration);
     }
@@ -335,39 +476,52 @@
         clearTimeout(holdTimer);
     }
 
-    // Bind secret triggers exclusively to the hidden button directly under the globe
     secretBtn.addEventListener('mousedown', startPress);
     secretBtn.addEventListener('mouseup', endPress);
     secretBtn.addEventListener('mouseleave', endPress);
-    
     secretBtn.addEventListener('touchstart', startPress, { passive: false });
     secretBtn.addEventListener('touchend', endPress);
     secretBtn.addEventListener('touchcancel', endPress);
 
-    // Switch between Search Autocomplete & Paste Link inputs
-    function switchTab(tabName) {
-        currentTab = tabName;
-        document.getElementById('tab-search').classList.toggle('active', tabName === 'search');
-        document.getElementById('tab-link').classList.toggle('active', tabName === 'link');
+    // ==========================================
+    // 🔀 NAVIGATION TABS (Main & Sub-Tabs)
+    // ==========================================
+    function switchMainTab(tabName) {
+        activeMainTab = tabName;
+        document.getElementById('tab-maps-group').classList.toggle('active', tabName === 'maps');
+        document.getElementById('tab-socials-group').classList.toggle('active', tabName === 'socials');
         
-        document.getElementById('container-search').style.display = tabName === 'search' ? 'block' : 'none';
-        document.getElementById('container-link').style.display = tabName === 'link' ? 'block' : 'none';
+        document.getElementById('section-maps').style.display = tabName === 'maps' ? 'block' : 'none';
+        document.getElementById('section-socials').style.display = tabName === 'socials' ? 'block' : 'none';
         
-        resetAppState();
+        statusDiv.style.display = 'none';
     }
 
-    function resetAppState() {
+    function switchMapsSubTab(subTabName) {
+        mapsSubTab = subTabName;
+        document.getElementById('sub-tab-search').classList.toggle('active', subTabName === 'search');
+        document.getElementById('sub-tab-link').classList.toggle('active', subTabName === 'link');
+        
+        document.getElementById('container-search').style.display = subTabName === 'search' ? 'block' : 'none';
+        document.getElementById('container-link').style.display = subTabName === 'link' ? 'block' : 'none';
+        
+        resetMapsAppState();
+    }
+
+    function resetMapsAppState() {
         targetReviewUrl = '';
         isReadyToWrite = false;
         previewDisplay.innerText = "Waiting for input...";
-        actionBtn.innerText = currentTab === 'search' ? "1. Select Business First" : "1. Process Link";
-        actionBtn.disabled = currentTab === 'search';
+        actionBtn.innerText = mapsSubTab === 'search' ? "1. Select Business First" : "1. Process Link";
+        actionBtn.disabled = mapsSubTab === 'search';
         actionBtn.style.backgroundColor = '';
         statusDiv.style.display = 'none';
         warningBox.style.display = 'none';
     }
 
-    // Initialize the Official Google Places Autocomplete library
+    // ==========================================
+    // 📍 GOOGLE MAPS AUTOMATION
+    // ==========================================
     async function initGoogleLibrary() {
         const { Place } = await google.maps.importLibrary("places");
         
@@ -398,11 +552,9 @@
         }, 1000);
     };
 
-    // INSTANT INPUT LISTENER (Fires immediately as they type/paste)
     mapsUrlInput.addEventListener('input', () => {
         const rawUrl = mapsUrlInput.value.trim();
         
-        // 1. Detect short link instantly
         const isShortLink = rawUrl.includes("goo.gl") || 
                             rawUrl.includes("g.page") || 
                             rawUrl.includes("app.goo.gl") || 
@@ -411,20 +563,18 @@
         if (isShortLink) {
             warningBox.style.display = 'block';
             showStatus("⚠️ Short links cannot be parsed directly.", "error");
-            actionBtn.disabled = true; // Disable action buttons immediately
+            actionBtn.disabled = true;
             isReadyToWrite = false;
             return;
         }
 
-        // 2. Clear warnings and reset state if it looks like a normal URL
         warningBox.style.display = 'none';
-        resetAppState();
+        resetMapsAppState();
         if (rawUrl !== '') {
             actionBtn.disabled = false;
         }
     });
 
-    // Handle Link Processing
     async function handleLinkProcess() {
         const rawUrl = mapsUrlInput.value.trim();
         if (!rawUrl) {
@@ -437,9 +587,7 @@
         try {
             const decodedUrl = decodeURIComponent(rawUrl);
 
-            // Match standard Place ID (ChIJ...)
             const chijMatch = decodedUrl.match(/(ChIJ[a-zA-Z0-9_-]{23})/);
-            // Match Hex Location Code (FID) from !1s... parameter
             const hexMatch = decodedUrl.match(/!1s(0x[0-9a-fA-F]+:0x[0-9a-fA-F]+)/);
 
             if (chijMatch) {
@@ -454,8 +602,8 @@
 
         } catch (error) {
             showStatus(`❌ ${error.message}`, "error");
-            resetAppState();
-            if (currentTab === 'link') actionBtn.disabled = false;
+            resetMapsAppState();
+            if (mapsSubTab === 'link') actionBtn.disabled = false;
         }
     }
 
@@ -469,33 +617,78 @@
     }
 
     actionBtn.addEventListener('click', async () => {
-        if (!isReadyToWrite && currentTab === 'link') {
+        if (!isReadyToWrite && mapsSubTab === 'link') {
             await handleLinkProcess();
         } else if (isReadyToWrite) {
-            await writeNfcTag();
+            await writeNfcTag(targetReviewUrl);
         }
     });
 
-    async function writeNfcTag() {
+    // ==========================================
+    // 📱 SOCIALS INTERACTIVE PARSING
+    // ==========================================
+    const socialPatterns = {
+        youtube: (usr) => `https://www.youtube.com/@${usr}?sub_confirmation=1`,
+        twitter: (usr) => `https://twitter.com/intent/user?screen_name=${usr}`,
+        facebook: (usr) => `https://www.facebook.com/${usr}`,
+        tiktok: (usr) => `https://www.tiktok.com/@${usr}`,
+        instagram: (usr) => `https://www.instagram.com/${usr}/`,
+        linkedin: (usr) => `https://www.linkedin.com/company/${usr}/`,
+        twitch: (usr) => `https://www.twitch.tv/${usr}`
+    };
+
+    // Reactively update links as the user types a username
+    socialUsernameInput.addEventListener('input', () => {
+        const username = socialUsernameInput.value.trim();
+        
+        for (const platform in socialPatterns) {
+            const displayEl = document.getElementById(`url-${platform}`);
+            if (username) {
+                displayEl.innerText = socialPatterns[platform](username);
+            } else {
+                // Reset to root platform address if empty
+                displayEl.innerText = socialPatterns[platform]('username').replace('username', '').replace('@', '');
+            }
+        }
+    });
+
+    // Write button execution for a specific social row
+    async function triggerSocialWrite(platform) {
+        const username = socialUsernameInput.value.trim();
+        if (!username) {
+            showStatus("⚠️ Please enter a username profile handle first.", "error");
+            return;
+        }
+
+        const generatedUrl = socialPatterns[platform](username);
+        previewDisplay.innerText = generatedUrl;
+        
+        await writeNfcTag(generatedUrl);
+    }
+
+    // ==========================================
+    // ⚡ COMMON WEBNFC EXECUTION ENGINE
+    // ==========================================
+    async function writeNfcTag(writeUrl) {
         if (!('NDEFReader' in window)) {
             showStatus("❌ NFC programming is only supported using Google Chrome on Android.", "error");
             return;
         }
 
         try {
-            showStatus("⌛ TAP TAG: Hold the tag against the back of your phone now...", "loading");
-            actionBtn.disabled = true;
+            showStatus(`⌛ TAP TAG: Hold tag against your phone to program: ${writeUrl}`, "loading");
+            if (activeMainTab === 'maps') actionBtn.disabled = true;
 
             const ndef = new NDEFReader();
             await ndef.write({
-                records: [{ recordType: "url", data: targetReviewUrl }]
+                records: [{ recordType: "url", data: writeUrl }]
             });
 
             showStatus("🎉 SUCCESS! Your NFC Tag has been permanently programmed.", "success");
-            actionBtn.disabled = false;
+            if (activeMainTab === 'maps') actionBtn.disabled = false;
         } catch (error) {
             showStatus(`❌ NFC Write Failed: ${error.message}. Please tap again.`, "error");
-            actionBtn.disabled = false;
+            if (activeMainTab === 'maps') actionBtn.disabled = false;
         }
     }
 
