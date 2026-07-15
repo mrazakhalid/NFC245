@@ -208,7 +208,7 @@
 
     <div id="container-link" class="input-group" style="display: none;">
         <label for="mapsUrl">Paste Google Maps Link</label>
-        <input type="text" id="mapsUrl" placeholder="http://googleusercontent.com/maps.google.com/... or full URL" autocomplete="off">
+        <input type="text" id="mapsUrl" placeholder="Paste your link here..." autocomplete="off">
     </div>
 
     <div class="preview-box">
@@ -260,7 +260,6 @@
 
     // Initialize the Official Google Places Autocomplete library
     async function initGoogleLibrary() {
-        // Automatically imports Google Maps internal Library
         const { Place } = await google.maps.importLibrary("places");
         
         const autocomplete = new google.maps.places.Autocomplete(autocompleteInput, {
@@ -283,7 +282,6 @@
 
     // Initialize Autocomplete once script is fully loaded by Google
     window.onload = () => {
-        // Wait for Google JS to bind
         setTimeout(() => {
             if (window.google && window.google.maps) {
                 initGoogleLibrary();
@@ -299,6 +297,7 @@
         actionBtn.disabled = false;
     });
 
+    // Updated handleLinkProcess using AllOrigins proxy for seamless mobile redirects
     async function handleLinkProcess() {
         const rawUrl = mapsUrlInput.value.trim();
         if (!rawUrl) {
@@ -309,34 +308,38 @@
         showStatus("🔍 Processing URL...", "loading");
 
         try {
-            let resolvedUrl = rawUrl;
+            let decodedUrl = decodeURIComponent(rawUrl);
+            
+            // Check if it is a mobile short link that needs expanding
+            const isShortLink = rawUrl.includes("goo.gl") || 
+                                rawUrl.includes("g.page") || 
+                                rawUrl.includes("app.goo.gl") || 
+                                rawUrl.includes("googleusercontent.com");
 
-            // Handle mobile short URLs securely via proxy parsing
-            if (rawUrl.includes("goo.gl") || rawUrl.includes("g.page") || rawUrl.includes("app.goo.gl") || rawUrl.includes("googleusercontent.com")) {
-                const proxyUrl = `https://corsproxy.io/?url=${encodeURIComponent(rawUrl)}`;
+            if (isShortLink) {
+                // Fetch through AllOrigins proxy to securely bypass browser block
+                const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(rawUrl)}`;
                 
-                const response = await fetch(proxyUrl, { redirect: 'manual' });
+                const response = await fetch(proxyUrl);
+                if (!response.ok) {
+                    throw new Error("Could not reach the server to expand this short link.");
+                }
+
+                const data = await response.json();
                 
-                if (response.ok || response.status === 302 || response.status === 301) {
-                    const locationHeader = response.headers.get('location');
-                    if (locationHeader) {
-                        resolvedUrl = locationHeader;
-                    } else {
-                        const text = await response.text();
-                        const urlMatch = text.match(/href="([^"]+)"/) || text.match(/window\.location\.replace\("([^"]+)"\)/);
-                        resolvedUrl = urlMatch ? urlMatch[1] : response.url;
-                    }
+                // Search the returned HTML contents for the target URL metadata
+                if (data && data.contents) {
+                    decodedUrl = decodeURIComponent(data.contents);
                 } else {
-                    throw new Error("Could not contact Google services to resolve short link.");
+                    throw new Error("Failed to read short link contents.");
                 }
             }
 
-            const decodedUrl = decodeURIComponent(resolvedUrl);
-
-            // Match standard Place ID
+            // Extract standard Place ID (ChIJ...)
             const chijMatch = decodedUrl.match(/(ChIJ[a-zA-Z0-9_-]{23})/);
-            // Match Hex Location Code (FID)
-            const hexMatch = decodedUrl.match(/!1s(0x[0-9a-fA-F]+:0x[0-9a-fA-F]+)/);
+            
+            // Extract Hex Location Code (0x...:0x...)
+            const hexMatch = decodedUrl.match(/(0x[0-9a-fA-F]+:0x[0-9a-fA-F]+)/);
 
             if (chijMatch) {
                 targetReviewUrl = `https://search.google.com/local/writereview?placeid=${chijMatch[1]}`;
@@ -345,7 +348,7 @@
                 targetReviewUrl = `https://search.google.com/local/writereview?fid=${hexMatch[1]}`;
                 setReadyToWriteState("Link parsed successfully!");
             } else {
-                throw new Error("Could not find a Place ID inside this link. Verify you copied the correct business link.");
+                throw new Error("Could not find a valid Google Business identifier inside this link. Try using a standard browser link.");
             }
 
         } catch (error) {
