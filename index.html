@@ -1,73 +1,410 @@
-// Step 1: Parse the pasted URL and extract the Place ID/CID
-    async function handleUrlParsing() {
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NFC Google Review Programmer</title>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --bg: #f9fafb;
+            --card-bg: #ffffff;
+            --text-main: #111827;
+            --text-muted: #4b5563;
+            --border: #e5e7eb;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+
+        .card {
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+            max-width: 460px;
+            width: 100%;
+            text-align: center;
+            border: 1px solid var(--border);
+        }
+
+        .icon {
+            font-size: 50px;
+            margin-bottom: 15px;
+        }
+
+        h1 {
+            font-size: 24px;
+            margin: 0 0 8px 0;
+            color: var(--text-main);
+        }
+
+        p {
+            color: var(--text-muted);
+            font-size: 14px;
+            line-height: 1.5;
+            margin: 0 0 24px 0;
+        }
+
+        .tab-container {
+            display: flex;
+            border-bottom: 2px solid var(--border);
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--text-muted);
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+        }
+
+        .tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .input-group {
+            text-align: left;
+            margin-bottom: 20px;
+        }
+
+        label {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            display: block;
+            margin-bottom: 8px;
+            letter-spacing: 0.5px;
+        }
+
+        input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            font-size: 15px;
+            box-sizing: border-box;
+            transition: all 0.2s;
+        }
+
+        input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
+            outline: none;
+        }
+
+        /* Preview Code Panel */
+        .preview-box {
+            background: #f3f4f6;
+            border: 1px dashed #cbd5e1;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: left;
+            word-break: break-all;
+        }
+
+        .preview-title {
+            font-size: 11px;
+            text-transform: uppercase;
+            font-weight: bold;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .preview-code {
+            font-family: monospace;
+            font-size: 13px;
+            color: #0f172a;
+            background: #e2e8f0;
+            padding: 6px 10px;
+            border-radius: 6px;
+            display: block;
+            margin-top: 5px;
+        }
+
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 16px 20px;
+            width: 100%;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+
+        button:disabled {
+            background-color: #e5e7eb;
+            color: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        #status {
+            margin-top: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            padding: 12px;
+            border-radius: 10px;
+            display: none;
+            line-height: 1.4;
+        }
+
+        .status-loading { display: block !important; background: #eff6ff; color: #1e40af; }
+        .status-success { display: block !important; background: #ecfdf5; color: #065f46; }
+        .status-error { display: block !important; background: #fef2f2; color: #991b1b; }
+
+        /* Hidden standard map components to prevent UI clutter */
+        gmp-map {
+            display: none !important;
+        }
+    </style>
+
+    <script>
+        (g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));e.set("libraries",[...r]+"");for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t[0].toLowerCase()),g[k]);e.set("callback",c+".maps."+q);a.src=`https://maps.${c}apis.com/maps/api/js?`+e;d[q]=f;a.onerror=()=>h=n(Error(p+" could not load."));a.nonce=m.querySelector("script[nonce]")?.nonce||"";m.head.append(a)}));d[l]?console.warn(p+" only loads once. Ignoring:",g):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})({
+            key: "AIzaSyA6myHzS10YXdcazAFalmXvDkrYCp5cLc8"
+        });
+    </script>
+</head>
+<body>
+
+<div class="card">
+    <div class="icon">🔮</div>
+    <h1>NFC Review Setup</h1>
+    <p>Prepare your target review link and write it directly to your physical NFC tag.</p>
+
+    <div class="tab-container">
+        <div id="tab-search" class="tab active" onclick="switchTab('search')">Option 1: Search Name</div>
+        <div id="tab-link" class="tab" onclick="switchTab('link')">Option 2: Paste Link</div>
+    </div>
+    
+    <div id="container-search" class="input-group">
+        <label for="autocomplete">Search Google Business</label>
+        <input type="text" id="autocomplete" placeholder="Type business name..." autocomplete="off">
+    </div>
+
+    <div id="container-link" class="input-group" style="display: none;">
+        <label for="mapsUrl">Paste Google Maps Link</label>
+        <input type="text" id="mapsUrl" placeholder="http://googleusercontent.com/maps.google.com/... or full URL" autocomplete="off">
+    </div>
+
+    <div class="preview-box">
+        <div class="preview-title">📡 Code to be programmed on tag:</div>
+        <span id="previewDisplay" class="preview-code">Waiting for business selection...</span>
+    </div>
+    
+    <button id="actionBtn" disabled>1. Choose a Business First</button>
+    <div id="status"></div>
+</div>
+
+<gmp-map center="-33.8688, 151.2195" zoom="13" map-id="DEMO_MAP_ID">
+    <gmp-place-autocomplete id="google-auto-component" slot="control-inline-start-block-start"></gmp-place-autocomplete>
+</gmp-map>
+
+<script>
+    let currentTab = 'search';
+    let targetReviewUrl = '';
+    let isReadyToWrite = false;
+
+    // Element Selectors
+    const autocompleteInput = document.getElementById('autocomplete');
+    const mapsUrlInput = document.getElementById('mapsUrl');
+    const previewDisplay = document.getElementById('previewDisplay');
+    const actionBtn = document.getElementById('actionBtn');
+    const statusDiv = document.getElementById('status');
+
+    // Switch between Search Autocomplete & Paste Link inputs
+    function switchTab(tabName) {
+        currentTab = tabName;
+        document.getElementById('tab-search').classList.toggle('active', tabName === 'search');
+        document.getElementById('tab-link').classList.toggle('active', tabName === 'link');
+        
+        document.getElementById('container-search').style.display = tabName === 'search' ? 'block' : 'none';
+        document.getElementById('container-link').style.display = tabName === 'link' ? 'block' : 'none';
+        
+        resetAppState();
+    }
+
+    function resetAppState() {
+        targetReviewUrl = '';
+        isReadyToWrite = false;
+        previewDisplay.innerText = "Waiting for input...";
+        actionBtn.innerText = currentTab === 'search' ? "1. Select Business First" : "1. Process Link";
+        actionBtn.disabled = currentTab === 'search';
+        actionBtn.style.backgroundColor = '';
+        statusDiv.style.display = 'none';
+    }
+
+    // Initialize the Official Google Places Autocomplete library
+    async function initGoogleLibrary() {
+        // Automatically imports Google Maps internal Library
+        const { Place } = await google.maps.importLibrary("places");
+        
+        const autocomplete = new google.maps.places.Autocomplete(autocompleteInput, {
+            types: ['establishment'],
+            fields: ['place_id', 'name']
+        });
+
+        // Event listener when user clicks on a search suggestion
+        autocomplete.addListener('place_changed', () => {
+            const place = autocomplete.getPlace();
+            if (!place.place_id) {
+                showStatus("Please select a business from the autocomplete dropdown list.", "error");
+                return;
+            }
+
+            targetReviewUrl = `https://search.google.com/local/writereview?placeid=${place.place_id}`;
+            setReadyToWriteState(`Selected: "${place.name}"`);
+        });
+    }
+
+    // Initialize Autocomplete once script is fully loaded by Google
+    window.onload = () => {
+        // Wait for Google JS to bind
+        setTimeout(() => {
+            if (window.google && window.google.maps) {
+                initGoogleLibrary();
+            } else {
+                console.error("Google Maps Script failed to mount onto window.");
+            }
+        }, 1000);
+    };
+
+    // Manual input parsing for pasted URLs (Long + Short URLs)
+    mapsUrlInput.addEventListener('input', () => {
+        resetAppState();
+        actionBtn.disabled = false;
+    });
+
+    async function handleLinkProcess() {
         const rawUrl = mapsUrlInput.value.trim();
         if (!rawUrl) {
             showStatus("Please paste a valid Google Maps link first.", "error");
             return;
         }
 
-        showStatus("🔍 Analyzing Google Maps URL...", "loading");
+        showStatus("🔍 Processing URL...", "loading");
 
         try {
             let resolvedUrl = rawUrl;
 
-            // Resolve mobile short URLs (goo.gl, g.page, app.goo.gl, googleusercontent)
+            // Handle mobile short URLs securely via proxy parsing
             if (rawUrl.includes("goo.gl") || rawUrl.includes("g.page") || rawUrl.includes("app.goo.gl") || rawUrl.includes("googleusercontent.com")) {
-                
-                // Using corsproxy.io with redirect=manual mode to extract the target location header safely
                 const proxyUrl = `https://corsproxy.io/?url=${encodeURIComponent(rawUrl)}`;
                 
                 const response = await fetch(proxyUrl, { redirect: 'manual' });
                 
-                // Read response headers or text to catch where Google is sending us
                 if (response.ok || response.status === 302 || response.status === 301) {
                     const locationHeader = response.headers.get('location');
                     if (locationHeader) {
                         resolvedUrl = locationHeader;
                     } else {
-                        // Fallback: Parse the HTML text if the proxy embedded the destination inside the body
                         const text = await response.text();
                         const urlMatch = text.match(/href="([^"]+)"/) || text.match(/window\.location\.replace\("([^"]+)"\)/);
-                        if (urlMatch) {
-                            resolvedUrl = urlMatch[1];
-                        } else {
-                            // If the proxy resolved it directly to the landing page, read its response URL
-                            resolvedUrl = response.url;
-                        }
+                        resolvedUrl = urlMatch ? urlMatch[1] : response.url;
                     }
                 } else {
-                    throw new Error("Could not expand the short link. Try copying the full link from your browser search bar.");
+                    throw new Error("Could not contact Google services to resolve short link.");
                 }
             }
 
             const decodedUrl = decodeURIComponent(resolvedUrl);
 
-            // Match 1: Extract standard ChIJ Place ID
+            // Match standard Place ID
             const chijMatch = decodedUrl.match(/(ChIJ[a-zA-Z0-9_-]{23})/);
-            
-            // Match 2: Extract CID hex string patterns (e.g. !1s0x...:0x...)
+            // Match Hex Location Code (FID)
             const hexMatch = decodedUrl.match(/!1s(0x[0-9a-fA-F]+:0x[0-9a-fA-F]+)/);
 
             if (chijMatch) {
-                const placeId = chijMatch[1];
-                targetReviewUrl = `https://search.google.com/local/writereview?placeid=${placeId}`;
+                targetReviewUrl = `https://search.google.com/local/writereview?placeid=${chijMatch[1]}`;
+                setReadyToWriteState("Link parsed successfully!");
             } else if (hexMatch) {
-                const cidHex = hexMatch[1];
-                targetReviewUrl = `https://search.google.com/local/writereview?fid=${cidHex}`;
+                targetReviewUrl = `https://search.google.com/local/writereview?fid=${hexMatch[1]}`;
+                setReadyToWriteState("Link parsed successfully!");
             } else {
-                throw new Error("Could not find a valid Google Business identifier. Ensure you are sharing a specific business location.");
+                throw new Error("Could not find a Place ID inside this link. Verify you copied the correct business link.");
             }
 
-            // Success Transition
-            stepState = 'write';
-            processBtn.innerText = "⚡ Write to NFC Tag";
-            processBtn.style.backgroundColor = "#059669"; // Change color to Success Green
-            showStatus("Link processed successfully! Ready to write to NFC.", "success");
-
         } catch (error) {
-            showStatus(`❌ Processing Error: ${error.message}`, "error");
-            stepState = 'parse';
-            processBtn.innerText = "Set Up Tag Link";
-            processBtn.style.backgroundColor = '';
+            showStatus(`❌ ${error.message}`, "error");
+            resetAppState();
+            if (currentTab === 'link') actionBtn.disabled = false;
         }
     }
+
+    function setReadyToWriteState(successMsg) {
+        isReadyToWrite = true;
+        previewDisplay.innerText = targetReviewUrl;
+        actionBtn.innerText = "⚡ Write to NFC Tag";
+        actionBtn.style.backgroundColor = "#059669"; // Turn Green
+        actionBtn.disabled = false;
+        showStatus(`✅ ${successMsg}. Ready to write!`, "success");
+    }
+
+    // Handle Action Button Router
+    actionBtn.addEventListener('click', async () => {
+        if (!isReadyToWrite && currentTab === 'link') {
+            await handleLinkProcess();
+        } else if (isReadyToWrite) {
+            await writeNfcTag();
+        }
+    });
+
+    // WebNFC write function
+    async function writeNfcTag() {
+        if (!('NDEFReader' in window)) {
+            showStatus("❌ NFC programming is only supported using Google Chrome on Android.", "error");
+            return;
+        }
+
+        try {
+            showStatus("⌛ TAP TAG: Hold the tag against the back of your phone now...", "loading");
+            actionBtn.disabled = true;
+
+            const ndef = new NDEFReader();
+            await ndef.write({
+                records: [{ recordType: "url", data: targetReviewUrl }]
+            });
+
+            showStatus("🎉 SUCCESS! Your NFC Tag has been permanently programmed.", "success");
+            actionBtn.disabled = false;
+        } catch (error) {
+            showStatus(`❌ NFC Write Failed: ${error.message}. Please tap again.`, "error");
+            actionBtn.disabled = false;
+        }
+    }
+
+    function showStatus(message, type) {
+        statusDiv.className = '';
+        statusDiv.innerText = message;
+        if (type === 'loading') statusDiv.classList.add('status-loading');
+        if (type === 'success') statusDiv.classList.add('status-success');
+        if (type === 'error') statusDiv.classList.add('status-error');
+    }
+</script>
+
+</body>
+</html>
