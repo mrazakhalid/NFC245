@@ -29,6 +29,8 @@
             align-items: center;
             min-height: 100vh;
             box-sizing: border-box;
+            user-select: none; /* Prevents text selection highlight during long press */
+            -webkit-user-select: none;
         }
 
         .card {
@@ -45,12 +47,14 @@
         .icon {
             font-size: 50px;
             margin-bottom: 15px;
+            cursor: pointer;
         }
 
         h1 {
             font-size: 24px;
             margin: 0 0 8px 0;
             color: var(--text-main);
+            cursor: pointer;
         }
 
         p {
@@ -225,8 +229,8 @@
 <body>
 
 <div class="card">
-    <div class="icon">🔮</div>
-    <h1>NFC Review Setup</h1>
+    <div class="icon" id="secretIcon">🔮</div>
+    <h1 id="secretTitle">NFC Review Setup</h1>
     <p>Prepare your target review link and write it directly to your physical NFC tag.</p>
 
     <div class="tab-container">
@@ -272,8 +276,9 @@
     // ==========================================
     // ⚙️ CONFIGURATION SETTING: SHOW/HIDE PREVIEW
     // Set to 'true' to show the preview box, or 'false' to hide it.
+    // Can be toggled live by long-pressing (4 seconds) the Header or Icon.
     // ==========================================
-    const SHOW_PREVIEW_BOX = true; 
+    let SHOW_PREVIEW_BOX = true; 
 
     let currentTab = 'search';
     let targetReviewUrl = '';
@@ -287,9 +292,45 @@
     const warningBox = document.getElementById('warningBox');
     const actionBtn = document.getElementById('actionBtn');
     const statusDiv = document.getElementById('status');
+    const secretTitle = document.getElementById('secretTitle');
+    const secretIcon = document.getElementById('secretIcon');
 
     // Apply the preview show/hide setting right away
     previewBox.style.display = SHOW_PREVIEW_BOX ? 'block' : 'none';
+
+    // ========================================================
+    // 🕵️‍♂️ HIDDEN LONG PRESS CONTROLLER (4-Second Hold)
+    // ========================================================
+    let holdTimer;
+    const holdDuration = 4000; // 4000ms = 4 seconds
+
+    function startPress(e) {
+        // Prevent default action (context menu popping on mobile)
+        e.preventDefault();
+        holdTimer = setTimeout(() => {
+            // Toggle the visibility
+            SHOW_PREVIEW_BOX = !SHOW_PREVIEW_BOX;
+            previewBox.style.display = SHOW_PREVIEW_BOX ? 'block' : 'none';
+            
+            // Pop an alert notifying user of successful change
+            alert(`Preview Panel is now: ${SHOW_PREVIEW_BOX ? 'ENABLED' : 'DISABLED'}`);
+        }, holdDuration);
+    }
+
+    function endPress() {
+        clearTimeout(holdTimer);
+    }
+
+    // Bind secret triggers to Title and Icon for Touch (mobile) & Mouse (desktop)
+    [secretTitle, secretIcon].forEach(element => {
+        element.addEventListener('mousedown', startPress);
+        element.addEventListener('mouseup', endPress);
+        element.addEventListener('mouseleave', endPress);
+        
+        element.addEventListener('touchstart', startPress, { passive: false });
+        element.addEventListener('touchend', endPress);
+        element.addEventListener('touchcancel', endPress);
+    });
 
     // Switch between Search Autocomplete & Paste Link inputs
     function switchTab(tabName) {
@@ -345,20 +386,11 @@
         }, 1000);
     };
 
+    // INSTANT INPUT LISTENER (Fires immediately as they type/paste)
     mapsUrlInput.addEventListener('input', () => {
-        resetAppState();
-        actionBtn.disabled = false;
-    });
-
-    // Handle Link Processing with warning checks
-    async function handleLinkProcess() {
         const rawUrl = mapsUrlInput.value.trim();
-        if (!rawUrl) {
-            showStatus("Please paste a valid Google Maps link first.", "error");
-            return;
-        }
-
-        // Detect short link patterns
+        
+        // 1. Detect short link instantly
         const isShortLink = rawUrl.includes("goo.gl") || 
                             rawUrl.includes("g.page") || 
                             rawUrl.includes("app.goo.gl") || 
@@ -366,8 +398,25 @@
 
         if (isShortLink) {
             warningBox.style.display = 'block';
-            showStatus("⚠️ Please provide the expanded full desktop URL.", "error");
-            actionBtn.disabled = true;
+            showStatus("⚠️ Short links cannot be parsed directly.", "error");
+            actionBtn.disabled = true; // Disable action buttons immediately
+            isReadyToWrite = false;
+            return;
+        }
+
+        // 2. Clear warnings and reset state if it looks like a normal URL
+        warningBox.style.display = 'none';
+        resetAppState();
+        if (rawUrl !== '') {
+            actionBtn.disabled = false;
+        }
+    });
+
+    // Handle Link Processing
+    async function handleLinkProcess() {
+        const rawUrl = mapsUrlInput.value.trim();
+        if (!rawUrl) {
+            showStatus("Please paste a valid Google Maps link first.", "error");
             return;
         }
 
