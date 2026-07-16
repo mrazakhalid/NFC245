@@ -136,6 +136,36 @@
             line-height: 1.4;
         }
 
+        /* Scan Window Box */
+        .scanner-container {
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 15px;
+            background: #000;
+            padding: 10px;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        #qr-reader {
+            width: 100%;
+            border: none !important;
+        }
+
+        .scan-trigger-btn {
+            background-color: #4b5563;
+            color: white;
+            border: none;
+            padding: 10px;
+            width: 100%;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 15px;
+        }
+
         .preview-box {
             background: #f3f4f6;
             border: 1px dashed #cbd5e1;
@@ -239,6 +269,8 @@
         .status-success { display: block !important; background: #ecfdf5; color: #065f46; }
         .status-error { display: block !important; background: #fef2f2; color: #991b1b; }
     </style>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
 
@@ -301,14 +333,13 @@
         </div>
 
         <div id="section-wifi" style="display: none;">
-            <div class="suite-card">
-                <div class="input-group">
-                    <label for="wifi-saved-select">Select Saved Network</label>
-                    <select id="wifi-saved-select" onchange="loadSavedWifiNetwork()">
-                        <option value="">-- No Saved Networks --</option>
-                    </select>
-                </div>
+            <button id="scanner-trigger" class="scan-trigger-btn" onclick="toggleQrScanner()">📷 Scan Wi-Fi QR Code</button>
+            
+            <div id="scanner-container" class="scanner-container">
+                <div id="qr-reader"></div>
+            </div>
 
+            <div class="suite-card">
                 <div class="input-group">
                     <label for="wifi-ssid">Network SSID (Wi-Fi Name)</label>
                     <input type="text" id="wifi-ssid" placeholder="e.g., Home_Network" oninput="updateWifiPreview()">
@@ -351,6 +382,8 @@
     
     let clickStreak = 0;
     let lastClick = 0;
+
+    let html5QrcodeScanner = null;
 
     const previewBox = document.getElementById('previewBox');
     const previewDisplay = document.getElementById('previewDisplay');
@@ -427,15 +460,119 @@
             document.getElementById(`section-${t}`).style.display = t === tabName ? 'block' : 'none';
         });
         statusDiv.style.display = 'none';
+
+        // Gracefully kill scanner if switching tabs
+        if (tabName !== 'wifi') {
+            stopQrScanner();
+        }
         
         if (tabName === 'socials') updateSocialPreview();
-        else if (tabName === 'wifi') {
-            loadSavedWifiDropdown();
-            updateWifiPreview();
-        }
+        else if (tabName === 'wifi') updateWifiPreview();
         else {
             previewDisplay.innerText = mapsProcessedUrl || "Waiting for input configuration...";
         }
+    }
+
+    // ==========================================
+    // 📷 WI-FI QR CODE SCANNER ENGINE
+    // ==========================================
+    function toggleQrScanner() {
+        const container = document.getElementById('scanner-container');
+        const triggerBtn = document.getElementById('scanner-trigger');
+
+        if (container.style.display === 'block') {
+            stopQrScanner();
+        } else {
+            container.style.display = 'block';
+            triggerBtn.innerText = "🛑 Stop Camera Scanner";
+            triggerBtn.style.backgroundColor = "var(--danger)";
+            startQrScanner();
+        }
+    }
+
+    function startQrScanner() {
+        showStatus("📷 Requesting Camera Access...", "loading");
+        
+        html5QrcodeScanner = new Html5Qrcode("qr-reader");
+        html5QrcodeScanner.start(
+            { facingMode: "environment" }, 
+            {
+                fps: 10,
+                qrbox: { width: 220, height: 220 }
+            },
+            onQrCodeSuccess,
+            onQrCodeError
+        ).then(() => {
+            statusDiv.style.display = 'none';
+        }).catch(err => {
+            showStatus(`❌ Camera initialization failed: ${err}`, "error");
+            stopQrScanner();
+        });
+    }
+
+    function stopQrScanner() {
+        const container = document.getElementById('scanner-container');
+        const triggerBtn = document.getElementById('scanner-trigger');
+        
+        container.style.display = 'none';
+        if (triggerBtn) {
+            triggerBtn.innerText = "📷 Scan Wi-Fi QR Code";
+            triggerBtn.style.backgroundColor = "#4b5563";
+        }
+
+        if (html5QrcodeScanner) {
+            html5QrcodeScanner.stop().then(() => {
+                html5QrcodeScanner = null;
+            }).catch(err => console.warn("Error shutting down scanner:", err));
+        }
+    }
+
+    function onQrCodeSuccess(decodedText) {
+        // Standard Wi-Fi Schema Parser: WIFI:S:<SSID>;T:<WPA|WEP|blank>;P:<PASSWORD>;H:<true|false|blank>;;
+        if (!decodedText.toUpperCase().startsWith("WIFI:")) {
+            showStatus("⚠️ Scanned code is not a valid Wi-Fi configuration format.", "error");
+            return;
+        }
+
+        stopQrScanner();
+        showStatus("✅ QR Code successfully decoded and populated!", "success");
+
+        try {
+            const ssid = parseWifiParam(decodedText, 'S:');
+            const pass = parseWifiParam(decodedText, 'P:');
+            let auth = parseWifiParam(decodedText, 'T:');
+
+            if (auth === 'WPA2' || auth === 'WPA') auth = 'WPA';
+            if (auth === '') auth = 'NONE';
+
+            document.getElementById('wifi-ssid').value = ssid;
+            document.getElementById('wifi-pass').value = pass;
+            document.getElementById('wifi-auth').value = auth;
+
+            updateWifiPreview();
+        } catch (e) {
+            showStatus("❌ Failed to parse Wi-Fi data parameters from the QR Code.", "error");
+        }
+    }
+
+    function onQrCodeError(errorMessage) {
+        // Suppress diagnostic errors in frame updates
+    }
+
+    function parseWifiParam(payload, marker) {
+        const index = payload.indexOf(marker);
+        if (index === -1) return '';
+        
+        let sub = payload.substring(index + marker.length);
+        let endIdx = sub.indexOf(';');
+        
+        // Handle escaped characters (e.g. \; or \:)
+        while (endIdx !== -1 && sub.charAt(endIdx - 1) === '\\') {
+            endIdx = sub.indexOf(';', endIdx + 1);
+        }
+        
+        const rawParam = endIdx !== -1 ? sub.substring(0, endIdx) : sub;
+        return rawParam.replace(/\\;/g, ';').replace(/\\:/g, ':').replace(/\\,/g, ',').replace(/\\\\/g, '\\');
     }
 
     // ==========================================
@@ -514,7 +651,7 @@
     }
 
     // ==========================================
-    // 📶 WI-FI STORAGE & RECORD ENGINE
+    // 📶 WI-FI RECORD GENERATION
     // ==========================================
     function generateWifiPayload(ssid, pass, auth) {
         return `WIFI:S:${ssid};T:${auth};P:${pass};;`;
@@ -525,42 +662,6 @@
         const pass = document.getElementById('wifi-pass').value.trim();
         const auth = document.getElementById('wifi-auth').value;
         previewDisplay.innerText = ssid ? generateWifiPayload(ssid, pass, auth) : "Waiting for input configuration...";
-    }
-
-    function saveWifiNetwork(ssid, pass, auth) {
-        let saved = JSON.parse(localStorage.getItem('nfc_saved_wifis') || '[]');
-        // Prevent duplicate network configuration entries
-        saved = saved.filter(item => item.ssid.toLowerCase() !== ssid.toLowerCase());
-        saved.push({ ssid, pass, auth });
-        localStorage.setItem('nfc_saved_wifis', JSON.stringify(saved));
-        loadSavedWifiDropdown();
-    }
-
-    function loadSavedWifiDropdown() {
-        const dropdown = document.getElementById('wifi-saved-select');
-        const saved = JSON.parse(localStorage.getItem('nfc_saved_wifis') || '[]');
-        
-        dropdown.innerHTML = '<option value="">-- No Saved Networks --</option>';
-        if (saved.length > 0) {
-            dropdown.innerHTML = '<option value="">-- Select Saved Network --</option>';
-            saved.forEach((net, index) => {
-                dropdown.innerHTML += `<option value="${index}">${net.ssid} (${net.auth})</option>`;
-            });
-        }
-    }
-
-    function loadSavedWifiNetwork() {
-        const selectIndex = document.getElementById('wifi-saved-select').value;
-        if (selectIndex === "") return;
-
-        const saved = JSON.parse(localStorage.getItem('nfc_saved_wifis') || '[]');
-        const targetNet = saved[selectIndex];
-        if (targetNet) {
-            document.getElementById('wifi-ssid').value = targetNet.ssid;
-            document.getElementById('wifi-pass').value = targetNet.pass;
-            document.getElementById('wifi-auth').value = targetNet.auth;
-            updateWifiPreview();
-        }
     }
 
     async function triggerWifiWrite() {
@@ -574,11 +675,7 @@
         }
 
         const wifiString = generateWifiPayload(ssid, pass, auth);
-        
-        const success = await writeNfc({ type: "text", data: wifiString }, 'wifi');
-        if (success) {
-            saveWifiNetwork(ssid, pass, auth);
-        }
+        await writeNfc({ type: "text", data: wifiString }, 'wifi');
     }
 
     // ==========================================
@@ -609,19 +706,19 @@
     }
 
     // ==========================================
-    // ⚡ WEBNFC ENGINE (Returns true on success)
+    // ⚡ WEBNFC ENGINE
     // ==========================================
     async function writeNfc(payload, source) {
         if (!isAdmin && getUsage() >= 10) {
             updateButtonFeedback(source, "error", "❌ Limit Exceeded (10/day)");
             showStatus("❌ RATE LIMIT EXCEEDED: Standard users can write a max of 10 tags per day.", "error");
-            return false;
+            return;
         }
 
         if (!('NDEFReader' in window)) {
             updateButtonFeedback(source, "error", "❌ Use Chrome on Android");
             showStatus("❌ NFC programming is only supported using Google Chrome on Android.", "error");
-            return false;
+            return;
         }
 
         try {
@@ -643,11 +740,9 @@
 
             updateButtonFeedback(source, "success");
             showStatus("🎉 SUCCESS! Your NFC Tag has been permanently programmed.", "success");
-            return true;
         } catch (error) {
             updateButtonFeedback(source, "error", "❌ Write Failed");
             showStatus(`❌ NFC Write Failed: ${error.message}. Please try again.`, "error");
-            return false;
         }
     }
 
@@ -658,11 +753,6 @@
         if (type === 'success') statusDiv.classList.add('status-success');
         if (type === 'error') statusDiv.classList.add('status-error');
     }
-
-    // Initial setup
-    window.addEventListener('load', () => {
-        loadSavedWifiDropdown();
-    });
 </script>
 
 </body>
