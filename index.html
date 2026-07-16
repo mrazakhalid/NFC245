@@ -113,7 +113,6 @@
             outline: none;
         }
 
-        /* Instruction Box Styling */
         .instruction-box {
             background: var(--warning-bg);
             border: 1px solid var(--warning-border);
@@ -137,7 +136,6 @@
             line-height: 1.4;
         }
 
-        /* Preview Code Panel - Hidden until Admin Authorized */
         .preview-box {
             background: #f3f4f6;
             border: 1px dashed #cbd5e1;
@@ -305,6 +303,13 @@
         <div id="section-wifi" style="display: none;">
             <div class="suite-card">
                 <div class="input-group">
+                    <label for="wifi-saved-select">Select Saved Network</label>
+                    <select id="wifi-saved-select" onchange="loadSavedWifiNetwork()">
+                        <option value="">-- No Saved Networks --</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
                     <label for="wifi-ssid">Network SSID (Wi-Fi Name)</label>
                     <input type="text" id="wifi-ssid" placeholder="e.g., Home_Network" oninput="updateWifiPreview()">
                 </div>
@@ -317,7 +322,7 @@
                 <div class="input-group">
                     <label for="wifi-auth">Network Security</label>
                     <select id="wifi-auth" onchange="updateWifiPreview()">
-                        <option value="WPA2">WPA/WPA2 Personal</option>
+                        <option value="WPA">WPA/WPA2 Personal</option>
                         <option value="WEP">WEP (Legacy)</option>
                         <option value="NONE">Unsecured / Open</option>
                     </select>
@@ -413,7 +418,7 @@
     updateUsageDisplay();
 
     // ==========================================
-    // 🔀 TAB CONTROLS
+    // 🔀 TAB CONTROLS & LOAD ON STARTUP
     // ==========================================
     function switchTab(tabName) {
         activeTab = tabName;
@@ -424,7 +429,10 @@
         statusDiv.style.display = 'none';
         
         if (tabName === 'socials') updateSocialPreview();
-        else if (tabName === 'wifi') updateWifiPreview();
+        else if (tabName === 'wifi') {
+            loadSavedWifiDropdown();
+            updateWifiPreview();
+        }
         else {
             previewDisplay.innerText = mapsProcessedUrl || "Waiting for input configuration...";
         }
@@ -506,10 +514,9 @@
     }
 
     // ==========================================
-    // 📶 WI-FI RECORD GENERATION
+    // 📶 WI-FI STORAGE & RECORD ENGINE
     // ==========================================
     function generateWifiPayload(ssid, pass, auth) {
-        // Construct standard Wi-Fi configuration format: WIFI:S:SSID;T:Auth;P:Password;;
         return `WIFI:S:${ssid};T:${auth};P:${pass};;`;
     }
 
@@ -517,8 +524,43 @@
         const ssid = document.getElementById('wifi-ssid').value.trim();
         const pass = document.getElementById('wifi-pass').value.trim();
         const auth = document.getElementById('wifi-auth').value;
-        
         previewDisplay.innerText = ssid ? generateWifiPayload(ssid, pass, auth) : "Waiting for input configuration...";
+    }
+
+    function saveWifiNetwork(ssid, pass, auth) {
+        let saved = JSON.parse(localStorage.getItem('nfc_saved_wifis') || '[]');
+        // Prevent duplicate network configuration entries
+        saved = saved.filter(item => item.ssid.toLowerCase() !== ssid.toLowerCase());
+        saved.push({ ssid, pass, auth });
+        localStorage.setItem('nfc_saved_wifis', JSON.stringify(saved));
+        loadSavedWifiDropdown();
+    }
+
+    function loadSavedWifiDropdown() {
+        const dropdown = document.getElementById('wifi-saved-select');
+        const saved = JSON.parse(localStorage.getItem('nfc_saved_wifis') || '[]');
+        
+        dropdown.innerHTML = '<option value="">-- No Saved Networks --</option>';
+        if (saved.length > 0) {
+            dropdown.innerHTML = '<option value="">-- Select Saved Network --</option>';
+            saved.forEach((net, index) => {
+                dropdown.innerHTML += `<option value="${index}">${net.ssid} (${net.auth})</option>`;
+            });
+        }
+    }
+
+    function loadSavedWifiNetwork() {
+        const selectIndex = document.getElementById('wifi-saved-select').value;
+        if (selectIndex === "") return;
+
+        const saved = JSON.parse(localStorage.getItem('nfc_saved_wifis') || '[]');
+        const targetNet = saved[selectIndex];
+        if (targetNet) {
+            document.getElementById('wifi-ssid').value = targetNet.ssid;
+            document.getElementById('wifi-pass').value = targetNet.pass;
+            document.getElementById('wifi-auth').value = targetNet.auth;
+            updateWifiPreview();
+        }
     }
 
     async function triggerWifiWrite() {
@@ -531,9 +573,12 @@
             return;
         }
 
-        // Standard text payload format that mobile devices parse for connection
         const wifiString = generateWifiPayload(ssid, pass, auth);
-        await writeNfc({ type: "text", data: wifiString }, 'wifi');
+        
+        const success = await writeNfc({ type: "text", data: wifiString }, 'wifi');
+        if (success) {
+            saveWifiNetwork(ssid, pass, auth);
+        }
     }
 
     // ==========================================
@@ -564,19 +609,19 @@
     }
 
     // ==========================================
-    // ⚡ WEBNFC ENGINE
+    // ⚡ WEBNFC ENGINE (Returns true on success)
     // ==========================================
     async function writeNfc(payload, source) {
         if (!isAdmin && getUsage() >= 10) {
             updateButtonFeedback(source, "error", "❌ Limit Exceeded (10/day)");
             showStatus("❌ RATE LIMIT EXCEEDED: Standard users can write a max of 10 tags per day.", "error");
-            return;
+            return false;
         }
 
         if (!('NDEFReader' in window)) {
             updateButtonFeedback(source, "error", "❌ Use Chrome on Android");
             showStatus("❌ NFC programming is only supported using Google Chrome on Android.", "error");
-            return;
+            return false;
         }
 
         try {
@@ -585,12 +630,10 @@
 
             const ndef = new NDEFReader();
             
-            // Build the record based on type
             let ndefRecord = {};
             if (payload.type === "url") {
                 ndefRecord = { recordType: "url", data: payload.data };
             } else if (payload.type === "text") {
-                // Wi-Fi details written as a standardized text string
                 ndefRecord = { recordType: "text", data: payload.data };
             }
 
@@ -600,9 +643,11 @@
 
             updateButtonFeedback(source, "success");
             showStatus("🎉 SUCCESS! Your NFC Tag has been permanently programmed.", "success");
+            return true;
         } catch (error) {
             updateButtonFeedback(source, "error", "❌ Write Failed");
             showStatus(`❌ NFC Write Failed: ${error.message}. Please try again.`, "error");
+            return false;
         }
     }
 
@@ -613,6 +658,11 @@
         if (type === 'success') statusDiv.classList.add('status-success');
         if (type === 'error') statusDiv.classList.add('status-error');
     }
+
+    // Initial setup
+    window.addEventListener('load', () => {
+        loadSavedWifiDropdown();
+    });
 </script>
 
 </body>
